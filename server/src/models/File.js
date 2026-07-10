@@ -30,7 +30,7 @@ const File = sequelize.define('File', {
     allowNull: false
   },
   storage_key: {
-    type: DataTypes.STRING(1000),
+    type: DataTypes.STRING(512),
     unique: true,
     allowNull: false
   },
