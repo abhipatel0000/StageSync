@@ -3,14 +3,23 @@ require('dotenv').config();
 
 let sequelize;
 
-if (process.env.DB_DIALECT === 'mysql' && process.env.NODE_ENV !== 'test') {
+// Support both custom DB_* env vars and Railway's default MYSQL* env vars
+const dbDialect = process.env.DB_DIALECT || (process.env.MYSQLHOST ? 'mysql' : 'sqlite');
+
+if (dbDialect === 'mysql' && process.env.NODE_ENV !== 'test') {
+  const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE;
+  const dbUser = process.env.DB_USER || process.env.MYSQLUSER;
+  const dbPass = process.env.DB_PASS || process.env.MYSQLPASSWORD;
+  const dbHost = process.env.DB_HOST || process.env.MYSQLHOST;
+  const dbPort = process.env.DB_PORT || process.env.MYSQLPORT || 3306;
+
   sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASS,
+    dbName,
+    dbUser,
+    dbPass,
     {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT || 3306,
+      host: dbHost,
+      port: dbPort,
       dialect: 'mysql',
       logging: false,
       pool: {

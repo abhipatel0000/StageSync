@@ -34,7 +34,7 @@ function matchOrigin(origin, allowedOrigins) {
 // CORS Configuration
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, ''))
-  : ['http://localhost:5173'];
+  : ['http://localhost:5173', 'https://*.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
