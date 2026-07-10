@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Automatically append /api/v1 if the user omitted it in their environment variable
+if (API_URL && !API_URL.endsWith('/api/v1') && !API_URL.endsWith('/api/v1/')) {
+  API_URL = API_URL.endsWith('/') ? `${API_URL}api/v1` : `${API_URL}/api/v1`;
+}
 
 import axios from 'axios';
 
