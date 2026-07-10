@@ -15,6 +15,15 @@ const client = axios.create({
   }
 });
 
+// Request interceptor: always inject X-Guest-Token from localStorage if present
+client.interceptors.request.use((config) => {
+  const guestToken = localStorage.getItem('stagesync_guest_token');
+  if (guestToken) {
+    config.headers['X-Guest-Token'] = guestToken;
+  }
+  return config;
+});
+
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -29,13 +38,13 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Response Interceptor for token rotation
+// Response Interceptor: only attempt token refresh for organizer routes, never for guest routes
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Avoid infinite loops on auth endpoints
+    // Skip interceptor for auth endpoints to avoid infinite loops
     if (
       originalRequest.url.includes('/auth/login') ||
       originalRequest.url.includes('/auth/register') ||
@@ -44,7 +53,12 @@ client.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Handle expired guest session or organizer session (401 Unauthorized)
+    // Skip token refresh entirely for guest routes — they use X-Guest-Token, not JWT cookies
+    if (originalRequest.url.includes('/guest/')) {
+      return Promise.reject(error);
+    }
+
+    // Handle expired organizer session (401 Unauthorized) — attempt JWT refresh
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -76,7 +90,6 @@ client.interceptors.response.use(
         
         // Trigger event or callback to redirect to login if refresh token is dead
         if (typeof window !== 'undefined') {
-          // Dispatch a custom event to notify AuthContext
           window.dispatchEvent(new Event('stagesync-logout'));
         }
         

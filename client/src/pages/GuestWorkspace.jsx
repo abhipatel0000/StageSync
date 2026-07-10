@@ -34,12 +34,19 @@ export default function GuestWorkspace() {
       }
     } catch (err) {
       console.error(err);
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        // Revoked or expired
+      const status = err.response?.status;
+      const code = err.response?.data?.error?.code;
+      if (status === 401 && (code === 'SESSION_REVOKED' || code === 'AUTHENTICATION_REQUIRED')) {
+        // Session was explicitly revoked by the organizer — force logout
+        await logoutGuest();
+        navigate('/guest');
+      } else if (status === 403 && (code === 'EVENT_EXPIRED' || code === 'SESSION_EXPIRED')) {
+        // Event expired — force logout
         await logoutGuest();
         navigate('/guest');
       } else {
-        setError('Failed to load event files.');
+        // Network error or transient failure — show error, do NOT log out
+        setError('Failed to load event files. Please check your connection and try again.');
       }
     } finally {
       setLoading(false);
@@ -101,7 +108,9 @@ export default function GuestWorkspace() {
       }
     } catch (err) {
       console.error(err);
-      if (err.response?.status === 401) {
+      const status = err.response?.status;
+      const code = err.response?.data?.error?.code;
+      if (status === 401 && (code === 'SESSION_REVOKED' || code === 'AUTHENTICATION_REQUIRED')) {
         await logoutGuest();
         navigate('/guest');
       } else {
