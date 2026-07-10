@@ -13,6 +13,24 @@ app.use(helmet({
   crossOriginResourcePolicy: false // Allows serving local files if needed in dev
 }));
 
+// Helper to match dynamic origins including wildcards (e.g. https://*.vercel.app)
+function matchOrigin(origin, allowedOrigins) {
+  const cleanOrigin = origin.trim().replace(/\/$/, '');
+  for (const allowed of allowedOrigins) {
+    if (allowed === '*') return true;
+    if (allowed.includes('*')) {
+      const regexPattern = '^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$';
+      const regex = new RegExp(regexPattern, 'i');
+      if (regex.test(cleanOrigin)) {
+        return true;
+      }
+    } else if (allowed === cleanOrigin) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // CORS Configuration
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, ''))
@@ -24,8 +42,7 @@ app.use(cors({
     if (!origin) {
       return callback(null, true);
     }
-    const cleanOrigin = origin.trim().replace(/\/$/, '');
-    if (corsOrigins.includes(cleanOrigin) || corsOrigins.includes('*')) {
+    if (matchOrigin(origin, corsOrigins)) {
       callback(null, true);
     } else {
       callback(null, false);
