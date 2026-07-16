@@ -31,6 +31,13 @@ if (dbDialect === 'mysql' && process.env.NODE_ENV !== 'test') {
     }
   );
 } else {
+  // Safeguard: Prevent running SQLite in production to avoid silent data loss
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'FATAL: SQLite is not permitted in production. Please check your database environment variables (DB_DIALECT, DB_HOST, DB_USER, DB_PASS, DB_NAME).'
+    );
+  }
+
   const storagePath = process.env.NODE_ENV === 'test'
     ? './database.test.sqlite'
     : (process.env.DB_STORAGE || './database.sqlite');
