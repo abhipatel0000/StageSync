@@ -15,12 +15,20 @@ const client = axios.create({
   }
 });
 
-// Request interceptor: always inject X-Guest-Token from localStorage if present
+// Request interceptor: inject access token + guest token on every request
 client.interceptors.request.use((config) => {
+  // Inject organizer access token as Bearer header (works on all browsers/mobile, unlike cross-site cookies)
+  const accessToken = localStorage.getItem('stagesync_access_token');
+  if (accessToken) {
+    config.headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  // Inject guest token if present
   const guestToken = localStorage.getItem('stagesync_guest_token');
   if (guestToken) {
     config.headers['X-Guest-Token'] = guestToken;
   }
+
   return config;
 });
 
@@ -76,23 +84,36 @@ client.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to rotate refresh token
-        await client.post('/auth/refresh');
-        
+        // Send stored refresh token in request body (cookie fallback for cross-domain mobile)
+        const refreshToken = localStorage.getItem('stagesync_refresh_token');
+        const refreshRes = await client.post('/auth/refresh', { refreshToken });
+
+        // Store new tokens from response body
+        if (refreshRes.data?.data?.accessToken) {
+          localStorage.setItem('stagesync_access_token', refreshRes.data.data.accessToken);
+        }
+        if (refreshRes.data?.data?.refreshToken) {
+          localStorage.setItem('stagesync_refresh_token', refreshRes.data.data.refreshToken);
+        }
+
         isRefreshing = false;
         processQueue(null);
-        
+
         // Retry original request
         return client(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;
         processQueue(refreshError, null);
-        
-        // Trigger event or callback to redirect to login if refresh token is dead
+
+        // Clear stored tokens on refresh failure
+        localStorage.removeItem('stagesync_access_token');
+        localStorage.removeItem('stagesync_refresh_token');
+
+        // Trigger event to redirect to login if refresh token is dead
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('stagesync-logout'));
         }
-        
+
         return Promise.reject(refreshError);
       }
     }

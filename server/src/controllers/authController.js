@@ -102,7 +102,8 @@ async function register(req, res) {
           email: user.email,
           createdAt: user.created_at
         },
-        accessToken
+        accessToken,
+        refreshToken: rawRefreshToken // included for mobile cross-domain localStorage fallback
       },
       message: 'Registration successful.'
     });
@@ -181,7 +182,8 @@ async function login(req, res) {
           email: user.email,
           createdAt: user.created_at
         },
-        accessToken
+        accessToken,
+        refreshToken: rawRefreshToken // included for mobile cross-domain localStorage fallback
       },
       message: 'Login successful.'
     });
@@ -243,7 +245,8 @@ async function logout(req, res) {
  */
 async function refresh(req, res) {
   try {
-    const rawRefreshToken = req.cookies.refreshToken;
+    // Accept refresh token from cookie (desktop) OR request body (mobile cross-domain fallback)
+    const rawRefreshToken = req.cookies.refreshToken || req.body?.refreshToken;
 
     if (!rawRefreshToken) {
       return res.status(401).json({
@@ -292,7 +295,8 @@ async function refresh(req, res) {
     return res.status(200).json({
       success: true,
       data: {
-        accessToken: newAccessToken
+        accessToken: newAccessToken,
+        refreshToken: newRawRefreshToken // included for mobile cross-domain localStorage fallback
       },
       message: 'Token refreshed successfully.'
     });

@@ -5,6 +5,8 @@ const AuthContext = createContext(null);
 
 // Storage keys
 const GUEST_TOKEN_KEY = 'stagesync_guest_token';
+const ACCESS_TOKEN_KEY = 'stagesync_access_token';
+const REFRESH_TOKEN_KEY = 'stagesync_refresh_token';
 
 // Attach guest token to all requests via X-Guest-Token header
 function setGuestTokenHeader(token) {
@@ -13,6 +15,18 @@ function setGuestTokenHeader(token) {
   } else {
     delete client.defaults.headers.common['X-Guest-Token'];
   }
+}
+
+// Save organizer tokens to localStorage (cross-domain mobile fallback)
+function saveOrganizerTokens(accessToken, refreshToken) {
+  if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+// Clear organizer tokens from localStorage
+function clearOrganizerTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export const AuthProvider = ({ children }) => {
@@ -24,33 +38,52 @@ export const AuthProvider = ({ children }) => {
   // Check initial logins on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        // 1. Try to load Organizer profile (uses httpOnly cookie via withCredentials)
-        const organizerRes = await client.get('/auth/me');
-        if (organizerRes.data.success) {
-          setUser(organizerRes.data.data.user);
+      // 1. Try to load Organizer profile if we have a stored access token
+      const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (storedToken) {
+        try {
+          const organizerRes = await client.get('/auth/me');
+          if (organizerRes.data.success) {
+            setUser(organizerRes.data.data.user);
+          }
+        } catch (e) {
+          // Access token expired — try to refresh silently using stored refresh token
+          try {
+            const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+            const refreshRes = await client.post('/auth/refresh', { refreshToken });
+            if (refreshRes.data?.data?.accessToken) {
+              saveOrganizerTokens(
+                refreshRes.data.data.accessToken,
+                refreshRes.data.data.refreshToken
+              );
+              // Retry loading user after token refresh
+              const retryRes = await client.get('/auth/me');
+              if (retryRes.data.success) {
+                setUser(retryRes.data.data.user);
+              }
+            }
+          } catch {
+            // Refresh also failed — clear tokens and stay logged out
+            clearOrganizerTokens();
+          }
         }
-      } catch (e) {
-        // Ignore, means not logged in as organizer
       }
 
+      // 2. Restore guest session token from localStorage
       try {
-        // 2. Restore guest session token from localStorage (cross-origin cookie fallback)
-        const storedToken = localStorage.getItem(GUEST_TOKEN_KEY);
-        if (storedToken) {
-          setGuestTokenHeader(storedToken);
+        const storedGuestToken = localStorage.getItem(GUEST_TOKEN_KEY);
+        if (storedGuestToken) {
+          setGuestTokenHeader(storedGuestToken);
           const guestRes = await client.get('/guest/event');
           if (guestRes.data.success) {
             setGuestSession(guestRes.data.data.session);
             setGuestEvent(guestRes.data.data.event);
           } else {
-            // Token invalid, clean up
             localStorage.removeItem(GUEST_TOKEN_KEY);
             setGuestTokenHeader(null);
           }
         }
       } catch (e) {
-        // Session expired or invalid — clean up storage
         localStorage.removeItem(GUEST_TOKEN_KEY);
         setGuestTokenHeader(null);
       }
@@ -63,6 +96,7 @@ export const AuthProvider = ({ children }) => {
     // Listen for dead refresh tokens to trigger logout
     const handleLogoutEvent = () => {
       setUser(null);
+      clearOrganizerTokens();
     };
 
     window.addEventListener('stagesync-logout', handleLogoutEvent);
@@ -77,6 +111,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await client.post('/auth/login', { email, password });
       if (res.data.success) {
+        // Save tokens to localStorage for cross-domain mobile support
+        saveOrganizerTokens(
+          res.data.data.accessToken,
+          res.data.data.refreshToken
+        );
         setUser(res.data.data.user);
         return { success: true };
       }
@@ -95,6 +134,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await client.post('/auth/register', { fullName, email, password });
       if (res.data.success) {
+        // Save tokens to localStorage for cross-domain mobile support
+        saveOrganizerTokens(
+          res.data.data.accessToken,
+          res.data.data.refreshToken
+        );
         setUser(res.data.data.user);
         return { success: true };
       }
@@ -114,6 +158,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       // Proceed to clear local state anyway
     } finally {
+      clearOrganizerTokens();
       setUser(null);
     }
   };
@@ -123,7 +168,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await client.post('/guest/authenticate', { eventCode, pin });
       if (res.data.success) {
-        // Store token in localStorage for cross-origin persistence
         const token = res.data.data.sessionToken;
         if (token) {
           localStorage.setItem(GUEST_TOKEN_KEY, token);
@@ -145,7 +189,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await client.post('/guest/authenticate-qr', { token });
       if (res.data.success) {
-        // Store token in localStorage for cross-origin persistence
         const sessionToken = res.data.data.sessionToken;
         if (sessionToken) {
           localStorage.setItem(GUEST_TOKEN_KEY, sessionToken);
@@ -169,7 +212,6 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       // Ignore
     } finally {
-      // Clear localStorage token and header
       localStorage.removeItem(GUEST_TOKEN_KEY);
       setGuestTokenHeader(null);
       setGuestSession(null);
