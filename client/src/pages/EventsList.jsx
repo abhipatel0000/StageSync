@@ -143,12 +143,12 @@ export default function EventsList() {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">My Events</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage event workspaces, file delivery directories, and venue credentials.</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">My Events</h1>
+          <p className="text-xs md:text-sm text-slate-400 mt-1">Manage event workspaces, file delivery directories, and venue credentials.</p>
         </div>
         <button
           onClick={() => {
@@ -158,7 +158,7 @@ export default function EventsList() {
             setAccessExpiresAt(new Date(today.getTime() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16));
             setShowCreateModal(true);
           }}
-          className="glow-btn-purple flex items-center gap-2 px-5 py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm transition-all"
+          className="glow-btn-purple flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm transition-all"
         >
           <Plus className="w-4 h-4" />
           Create Event
@@ -185,7 +185,7 @@ export default function EventsList() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {events.map((event) => {
             const starts = new Date(event.accessStartsAt);
             const expires = new Date(event.accessExpiresAt);
@@ -252,7 +252,7 @@ export default function EventsList() {
       {/* Create Event Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-xl bg-darkbg-900 border border-white/10 rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto relative">
+        <div className="w-full max-w-xl bg-darkbg-900 border border-white/10 rounded-2xl p-4 md:p-8 max-h-[90vh] overflow-y-auto relative">
             <button
               onClick={() => setShowCreateModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"

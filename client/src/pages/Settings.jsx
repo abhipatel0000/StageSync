@@ -85,11 +85,11 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-6 md:space-y-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="border-b border-white/5 pb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight">Account Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure your master organizer profile and security settings.</p>
+      <div className="border-b border-white/5 pb-5">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Account Settings</h1>
+        <p className="text-xs md:text-sm text-slate-400 mt-1">Configure your master organizer profile and security settings.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
